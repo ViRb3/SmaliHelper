@@ -62,7 +62,7 @@ namespace Smali_Helper_v2
                     subItems.Add(newItem);
                 }
 
-                foreach (TreeViewItem currentSubItem in 
+                foreach (TreeViewItem currentSubItem in
                     from node in subItems
                     orderby node.Header
                     select node)
@@ -85,11 +85,11 @@ namespace Smali_Helper_v2
         private void Read(string file)
         {
             BackgroundWorker backgroundWorker = new BackgroundWorker();
-            backgroundWorker.DoWork += new DoWorkEventHandler(this.backgroundWorker_DoWork);
+            backgroundWorker.DoWork += new DoWorkEventHandler(this.BackgroundWorker_DoWork);
             backgroundWorker.RunWorkerAsync(file);
         }
 
-        private void backgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        private void BackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
         {
             string rawXamlText;
 
@@ -111,7 +111,7 @@ namespace Smali_Helper_v2
                     XpsDocument.CreateXpsDocumentWriter(xps).Write(paginator);
 
                     FixedDocument fixedDocument = xps.GetFixedDocumentSequence().References[0].GetDocument(true);
-                    
+
                     this.documentViewer.Document = fixedDocument;
                     this.documentViewer.Zoom = 125;
                 }));

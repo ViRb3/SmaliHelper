@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Smali_Helper_v2"
         mc:Ignorable="d"
-        Title="Smali Helper v2   ~ViR" Height="447.4" Width="792.6">
+        Title="Smali Helper v2" Height="447.4" Width="792.6">
     <Grid>
         <GroupBox x:Name="groupBox" Header="" HorizontalAlignment="Stretch" Margin="193,0,10,10" VerticalAlignment="Stretch" Height="Auto" Width="Auto">
             <DocumentViewer x:Name="documentViewer" HorizontalAlignment="Stretch" Margin="0,0,0,0" VerticalAlignment="Stretch">

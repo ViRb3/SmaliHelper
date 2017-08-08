@@ -1,30 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.IO.Packaging;
 using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Web.UI.WebControls;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Markup;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Xps.Packaging;
 using System.Xml;
-using Path = System.IO.Path;
 
 namespace Smali_Helper_v2
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    ///     Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -33,98 +22,80 @@ namespace Smali_Helper_v2
             InitializeComponent();
             if (!Directory.Exists("HelpFiles"))
             {
-                MessageBox.Show("Help files not found!", "Error");
+                MessageBox.Show("Help files not found!", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-            this.List();
+            List();
+            DisplayFile("HelpFiles/general help/SmaliInfo.xaml");
         }
 
         private void List()
         {
-            string[] helpCategories = Directory.GetDirectories(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "HelpFiles"));
-            List<TreeViewItem> items = new List<TreeViewItem>();
+            DirectoryInfo[] categoryDirs = new DirectoryInfo("HelpFiles").GetDirectories();
+            var treeViewItems = new List<TreeViewItem>();
 
-            foreach (string path in helpCategories)
+            foreach (DirectoryInfo categoryDir in categoryDirs)
             {
-                TreeViewItem item = new TreeViewItem();
-                item.Header = Path.GetFileNameWithoutExtension(path);
+                var categoryItem = new TreeViewItem();
+                categoryItem.Header = categoryDir.Name;
 
-                string[] helpFiles = Directory.GetFiles(path);
-                List<TreeViewItem> subItems = new List<TreeViewItem>();
+                var treeViewSubItems = new List<TreeViewItem>();
 
-                for (int j = 0; j < helpFiles.Length; j++)
+                foreach (FileInfo helpFile in categoryDir.GetFiles())
                 {
-                    string text = helpFiles[j];
-                    TreeViewItem newItem = new TreeViewItem();
-                    newItem.Header = Path.GetFileNameWithoutExtension(text).Replace("#", "/");
-                    newItem.Tag = text;
+                    var subItem = new TreeViewItem();
+                    subItem.Header = helpFile.Name.Replace("#", "/");
+                    subItem.Tag = helpFile.FullName;
 
-                    subItems.Add(newItem);
+                    treeViewSubItems.Add(subItem);
                 }
 
-                foreach (TreeViewItem currentSubItem in
-                    from node in subItems
-                    orderby node.Header
-                    select node)
-                {
-                    item.Items.Add(currentSubItem);
-                }
+                foreach (TreeViewItem treeViewSubItem in treeViewSubItems.OrderBy(node => node.Header))
+                    categoryItem.Items.Add(treeViewSubItem);
 
-                items.Add(item);
-                subItems.Clear();
+                treeViewItems.Add(categoryItem);
             }
 
-            foreach (TreeViewItem currentItem in from a in items
-                orderby a.Header
-                select a)
-            {
-                this.treeView.Items.Add(currentItem);
-            }
+            foreach (TreeViewItem currentItem in treeViewItems.OrderBy(a => a.Header))
+                treeView.Items.Add(currentItem);
         }
 
-        private void Read(string file)
-        {
-            BackgroundWorker backgroundWorker = new BackgroundWorker();
-            backgroundWorker.DoWork += new DoWorkEventHandler(this.BackgroundWorker_DoWork);
-            backgroundWorker.RunWorkerAsync(file);
-        }
-
-        private void BackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        private async void DisplayFile(string file)
         {
             string rawXamlText;
-
-            using (StreamReader streamReader = File.OpenText(e.Argument as string))
+            using (StreamReader streamReader = File.OpenText(file))
             {
                 rawXamlText = streamReader.ReadToEnd();
             }
 
-            this.Dispatcher.BeginInvoke(
+            var flowDocument = XamlReader.Load(new XmlTextReader(new StringReader(rawXamlText))) as FlowDocument;
+            DocumentPaginator paginator = ((IDocumentPaginatorSource) flowDocument).DocumentPaginator;
+            Package package = Package.Open(new MemoryStream(), FileMode.Create, FileAccess.ReadWrite);
+            var packUri = new Uri("pack://temp.xps");
+
+            PackageStore.RemovePackage(packUri);
+            PackageStore.AddPackage(packUri, package);
+
+            var xps = new XpsDocument(package, CompressionOption.NotCompressed, packUri.ToString());
+            XpsDocument.CreateXpsDocumentWriter(xps).Write(paginator);
+
+            FixedDocument fixedDocument = xps.GetFixedDocumentSequence().References[0].GetDocument(true);
+
+            await Dispatcher.BeginInvoke(
                 new Action(() =>
                 {
-                    FlowDocument flowDocument = XamlReader.Load(new XmlTextReader(new StringReader(rawXamlText))) as FlowDocument;
-                    var paginator = ((IDocumentPaginatorSource)flowDocument).DocumentPaginator;
-                    var package = Package.Open(new MemoryStream(), FileMode.Create, FileAccess.ReadWrite);
-                    var packUri = new Uri("pack://temp.xps");
-                    PackageStore.RemovePackage(packUri);
-                    PackageStore.AddPackage(packUri, package);
-                    var xps = new XpsDocument(package, CompressionOption.NotCompressed, packUri.ToString());
-                    XpsDocument.CreateXpsDocumentWriter(xps).Write(paginator);
-
-                    FixedDocument fixedDocument = xps.GetFixedDocumentSequence().References[0].GetDocument(true);
-
-                    this.documentViewer.Document = fixedDocument;
-                    this.documentViewer.Zoom = 125;
+                    documentViewer.Document = fixedDocument;
+                    documentViewer.Zoom = 125;
                 }));
         }
 
         private void TreeView_OnSelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            TreeViewItem item = e.NewValue as TreeViewItem;
-
+            var item = e.NewValue as TreeViewItem;
             if (item?.Tag == null)
                 return;
 
-            Read(item.Tag.ToString());
+            DisplayFile(item.Tag.ToString());
         }
     }
 }
